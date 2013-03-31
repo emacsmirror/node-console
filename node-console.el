@@ -4,7 +4,7 @@
 ;; Copyright (C) 2013 by Yuta Yamada
 
 ;; Author: Yuta Yamada <cokesboy"at"gmail.com>
-;; URL: 
+;; URL: https://github.com/yuutayamada/node-console
 ;; Version: 0.0.1
 ;; Package-Requires: ((helm "20130105") (popwin "20130321"))
 ;; Keywords: javascript
