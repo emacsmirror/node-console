@@ -41,6 +41,7 @@
 (require 'helm)
 
 (defvar node-console-v8-options '())
+(defvar node-console-javascript-mode "js2-mode")
 
 (defvar helm-node-console-v8-options-source
   '(((name . "helm-v8-options")
@@ -93,8 +94,6 @@
    :prompt "v8 options: "
    :sources helm-node-console-v8-options-source
    :candidates-in-buffer))
-
-(defvar node-console-javascript-mode "js2-mode")
 
 (defun node-console-file-ok-p ()
   (or (string-match "\.js$" buffer-file-name)
