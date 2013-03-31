@@ -150,16 +150,18 @@
 
 (defun node-console-extract-environment (environment)
   (interactive)
-  (typecase environment
-    (list
-     (mapconcat 'identity
-                (loop for e in environment
-                      collect (node-console-extract-environment e))
-                " "))
-    (symbol (let* ((script (node-console-extract-start-script))
-                   (env    (symbol-name environment)))
-              (string-match (concat env "=[^ ]+") script)
-              (match-string 0 script)))))
+  (let ((script (node-console-extract-start-script)))
+    (when script
+      (typecase environment
+        (list
+         (mapconcat 'identity
+                    (loop for e in environment
+                          collect (node-console-extract-environment e))
+                    " "))
+        (symbol (let* ((script (node-console-extract-start-script))
+                       (env    (symbol-name environment)))
+                  (string-match (concat env "=[^ ]+") script)
+                  (match-string 0 script)))))))
 
 (defun node-console-locate-package-json ()
   (interactive)
