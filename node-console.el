@@ -145,9 +145,9 @@
        json)
     (when json-file
       (save-current-buffer
-      (with-temp-buffer
-        (find-file json-file)
-        (setq json (buffer-string))))
+        (with-temp-buffer
+          (find-file json-file)
+          (setq json (buffer-string))))
       (switch-to-buffer current)
       (first
        (loop for data in (json-read-from-string json)
