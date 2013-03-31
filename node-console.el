@@ -45,6 +45,8 @@
 (defvar node-console-default-environment '(NODE_ENV NODE_PATH))
 (defvar node-console-javascript-mode "js2-mode")
 
+(defvar node-console-buffer "*node-console*")
+
 (defvar helm-node-console-v8-options-source
   '(((name . "helm-v8-options")
      (candidates . (lambda ()
@@ -104,29 +106,36 @@
 ;;;###autoload
 (defun node-console ()
   (interactive)
-  (if current-prefix-arg
-      (helm-node-console-v8-options)
-    (lexical-let*
-        ((region
-          (when (region-active-p)
-            (copy-region-as-kill (region-beginning) (region-end))
-            (replace-regexp-in-string "'" "\'" (car kill-ring))))
-         (file   (when (node-console-file-ok-p)
-                   buffer-file-name))
-         (option (mapconcat 'identity node-console-v8-options " "))
-         (environment (node-console-extract-environment
-                       node-console-default-environment))
-         (node (concat environment " node " option " "))
-         (command (if region
-                      (concat node "-e '" region "'")
-                    (concat node file))))
-      (popwin:popup-buffer
-       (get-buffer-create "*node-console*") :position 'top)
-      (erase-buffer)
-      (insert (node-console-print command)))))
+  (let (current-buffer (current-buffer))
+    (if current-prefix-arg
+        (helm-node-console-v8-options)
+      (lexical-let*
+          ((region
+            (when (region-active-p)
+              (copy-region-as-kill (region-beginning) (region-end))
+              (replace-regexp-in-string "'" "\'" (car kill-ring))))
+           (file   (when (node-console-file-ok-p)
+                     buffer-file-name))
+           (option (mapconcat 'identity node-console-v8-options " "))
+           (environment (node-console-extract-environment
+                         node-console-default-environment))
+           (node (concat environment " node " option " "))
+           (command (if region
+                        (concat node "-e '" region "'")
+                      (concat node file))))
+        (save-selected-window
+          (node-console-print command current-buffer)
+          (popwin:popup-buffer
+           (get-buffer-create node-console-buffer)
+           :noselect t :position 'top))))))
 
-(defun node-console-print (command)
-  (shell-command-to-string (concat "echo " command "; " command)))
+(defun node-console-print (command current-buffer)
+  (let ((node-console-buffer (get-buffer-create node-console-buffer)))
+    (switch-to-buffer node-console-buffer)
+    (erase-buffer)
+    (start-process "node-cosole" node-console-buffer
+                   "/bin/sh" "-c" (concat " echo " command " && " command))
+    (switch-to-buffer current-buffer)))
 
 (defun node-console-extract-start-script ()
   (interactive)
