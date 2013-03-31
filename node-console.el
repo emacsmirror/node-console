@@ -39,8 +39,10 @@
 (eval-when-compile (require 'cl))
 (require 'popwin)
 (require 'helm)
+(require 'json)
 
 (defvar node-console-v8-options '())
+(defvar node-console-default-environment '(NODE_ENV NODE_PATH))
 (defvar node-console-javascript-mode "js2-mode")
 
 (defvar helm-node-console-v8-options-source
@@ -112,14 +114,63 @@
          (file   (when (node-console-file-ok-p)
                    buffer-file-name))
          (option (mapconcat 'identity node-console-v8-options " "))
-         (node (concat "node " option " "))
+         (environment (node-console-extract-environment
+                       node-console-default-environment))
+         (node (concat environment " node " option " "))
          (command (if region
                       (concat node "-e '" region "'")
                     (concat node file))))
       (popwin:popup-buffer
        (get-buffer-create "*node-console*") :position 'top)
       (erase-buffer)
-      (insert (shell-command-to-string command)))))
+      (insert (node-console-print command)))))
+
+(defun node-console-print (command)
+  (shell-command-to-string (concat "echo " command "; " command)))
+
+(defun node-console-extract-start-script ()
+  (interactive)
+  (lexical-let*
+      ((current (current-buffer))
+       (json-file (node-console-locate-package-json))
+       json)
+    (when json-file
+      (save-current-buffer
+      (with-temp-buffer
+        (find-file json-file)
+        (setq json (buffer-string))))
+      (switch-to-buffer current)
+      (first
+       (loop for data in (json-read-from-string json)
+             for attribute = (car data)
+             if (and (equal attribute 'scripts)
+                     (equal 'start (caadr data))
+                     (cdadr data))
+             collect it)))))
+
+(defun node-console-extract-environment (environment)
+  (interactive)
+  (typecase environment
+    (list
+     (mapconcat 'identity
+                (loop for e in environment
+                      collect (node-console-extract-environment e))
+                " "))
+    (symbol (let* ((script (node-console-extract-start-script))
+                   (env    (symbol-name environment)))
+              (string-match (concat env "=[^ ]+") script)
+              (match-string 0 script)))))
+
+(defun node-console-locate-package-json ()
+  (interactive)
+  (loop with dirs = (split-string default-directory "/")
+        with file-name = ""
+        for name in dirs
+        if (string< "" name)
+        do (setq file-name (concat file-name "/" name))
+        if (file-exists-p (concat file-name "/package.json"))
+        do (return (concat file-name "/package.json"))
+        finally return nil))
 
 (provide 'node-console)
 
