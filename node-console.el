@@ -105,6 +105,18 @@
   (or (string-match "\.js$" buffer-file-name)
       (equal node-console-javascript-mode major-mode)))
 
+(defun node-console-extract-region (&optional string)
+  (interactive)
+  (let* (region-string buffer)
+    (copy-region-as-kill (region-beginning) (region-end))
+      (setq region-string (first kill-ring)
+            buffer (current-buffer))
+      (save-current-buffer
+        (with-temp-file "/tmp/emacs-node-console.js"
+          (insert region-string)))
+      (switch-to-buffer buffer))
+  "/tmp/emacs-node-console.js")
+
 ;;;###autoload
 (defun node-console ()
   (interactive)
@@ -112,18 +124,16 @@
     (if current-prefix-arg
         (helm-node-console-v8-options)
       (lexical-let*
-          ((region
-            (when (region-active-p)
-              (copy-region-as-kill (region-beginning) (region-end))
-              (replace-regexp-in-string "'" "\'" (car kill-ring))))
+          ((region-tmp-file (if (region-active-p)
+                                (node-console-extract-region)))
            (file   (when (node-console-file-ok-p)
                      buffer-file-name))
            (option (mapconcat 'identity node-console-v8-options " "))
            (environment (node-console-extract-environment
                          node-console-default-environment))
            (node (concat environment " node " option " "))
-           (command (if region
-                        (concat node "-e '" region "'")
+           (command (if region-tmp-file
+                        (concat node region-tmp-file)
                       (concat node file))))
         (when (node-console-kill-process)
           (save-selected-window
