@@ -46,6 +46,8 @@
 (defvar node-console-javascript-mode "js2-mode")
 
 (defvar node-console-buffer "*node-console*")
+(defvar node-console-process-name "emacs-node-console")
+
 
 (defvar helm-node-console-v8-options-source
   '(((name . "helm-v8-options")
@@ -123,20 +125,29 @@
            (command (if region
                         (concat node "-e '" region "'")
                       (concat node file))))
-        (save-selected-window
-          (node-console-print command current-buffer)
-          (popwin:popup-buffer
-           (get-buffer-create node-console-buffer)
-           :noselect t :position 'top))))))
+        (when (node-console-kill-process)
+          (save-selected-window
+            (node-console-print command current-buffer)
+            (popwin:popup-buffer
+             (get-buffer-create node-console-buffer)
+             :noselect t :position 'top)))))))
 
 (defun node-console-print (command current-buffer)
   (let ((node-console-buffer (get-buffer-create node-console-buffer)))
     (switch-to-buffer node-console-buffer)
     (erase-buffer)
-    (start-process "node-cosole" node-console-buffer
+    (start-process node-console-process-name node-console-buffer
                    "/bin/sh" "-c" (concat " echo " command " && " command))
     (switch-to-buffer current-buffer)))
 
+(defun node-console-kill-process ()
+  (interactive)
+  (loop for process in (process-list)
+        if (string-match node-console-process-name
+                         (process-name process))
+        do (kill-process process))
+  (sleep-for 1) ; to avoid force stop message
+  t)
 (defun node-console-extract-start-script ()
   (interactive)
   (lexical-let*
