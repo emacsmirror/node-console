@@ -48,6 +48,11 @@
 (defvar node-console-buffer "*node-console*")
 (defvar node-console-process-name "emacs-node-console")
 
+(defvar node-console-map
+  (let* ((map (make-sparse-keymap)))
+    (loop for key  in '("\C-d") do
+          (define-key map key 'node-console-kill-process))
+    map))
 
 (defvar helm-node-console-v8-options-source
   '(((name . "helm-v8-options")
@@ -162,6 +167,7 @@
 (defun node-console-print (command current-buffer)
   (let ((node-console-buffer (get-buffer-create node-console-buffer)))
     (switch-to-buffer node-console-buffer)
+    (node-console-mode)
     (erase-buffer)
     (start-process node-console-process-name node-console-buffer
                    "/bin/sh" "-c" (concat " echo " command " && " command))
@@ -175,6 +181,14 @@
         do (kill-process process))
   (sleep-for 1) ; to avoid force stop message
   t)
+
+(defun node-console-mode ()
+  (interactive)
+  (kill-all-local-variables)
+  (setq major-mode 'node-console-mode
+        mode-name "node-console")
+  (use-local-map node-console-map))
+
 (defun node-console-extract-start-script ()
   (interactive)
   (lexical-let*
