@@ -101,9 +101,13 @@
    :sources helm-node-console-v8-options-source
    :candidates-in-buffer))
 
-(defun node-console-file-ok-p ()
-  (or (string-match "\.js$" buffer-file-name)
-      (equal node-console-javascript-mode major-mode)))
+(defun node-console-check-file ()
+  (interactive)
+  (if (or (string-match "\.js$" buffer-file-name)
+          (equal node-console-javascript-mode major-mode))
+      :js
+    (when (string-match "\.coffee$" buffer-file-name)
+      :coffee)))
 
 (defun node-console-extract-region (&optional string)
   (interactive)
@@ -126,8 +130,9 @@
       (lexical-let*
           ((region-tmp-file (if (region-active-p)
                                 (node-console-extract-region)))
-           (file   (when (node-console-file-ok-p)
-                     buffer-file-name))
+           (file   (case (node-console-check-file)
+                     (:js buffer-file-name)
+                     (:coffee (node-console-compile-coffee))))
            (option (mapconcat 'identity node-console-v8-options " "))
            (environment (node-console-extract-environment
                          node-console-default-environment))
@@ -141,6 +146,18 @@
             (popwin:popup-buffer
              (get-buffer-create node-console-buffer)
              :noselect t :position 'top)))))))
+
+(defun node-console-compile-coffee ()
+  (interactive)
+  (let* ((file-name buffer-file-truename)
+         (command (concat "coffee -c " file-name)))
+    (if (and (file-exists-p file-name)
+             (string-match "\.coffee$" file-name))
+        (when
+            (and (shell-command command)
+                 (minibuffer-message (format "I've done to compile %s" file-name)))
+          (replace-regexp-in-string "\.coffee$" ".js" buffer-file-name))
+      (error (concat "I didn't compile " file-name)))))
 
 (defun node-console-print (command current-buffer)
   (let ((node-console-buffer (get-buffer-create node-console-buffer)))
